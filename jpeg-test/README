@@ -1,0 +1,19 @@
+Proof of Concept JPEG decoder using Allwinners CedarX
+=====================================================
+
+*WARNING*: Don't use on "production systems". This was made by reverse
+engineering and might crash your system or destroy data!
+It was made only for my personal use of testing the reverse engineered
+things, so don't expect good code quality. It's far from complete and
+might crash if the JPEG doesn't fit it's requirements!
+
+Usage:
+------
+
+make
+./jpeg-test example.jpg
+
+If everything works, output is .ppm (Portable Pixmap).
+You might pipe it into ImageMagick:
+
+./jpeg-test example.jpg | display -
