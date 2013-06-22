@@ -178,9 +178,9 @@ void output_ppm(FILE *file, struct jpeg_t *jpeg, uint8_t *luma_buffer, uint8_t *
 		{
 			// reordering and colorspace conversion should be done by Display Engine Frontend (DEFE)
 			int cy = y / jpeg->comp[0].samp_v;
-			float Y = *((uint8_t *)(luma_buffer + (x / 32) * 1024 + (x % 32) + ((y % 32) * 32) + ((y / 32) * ((jpeg->width / 32) * 1024))));
-			float Cb = *((uint8_t *)(chroma_buffer + (x / 32) * 1024 + ((x % 32) / 2 * 2) + ((cy % 32) * 32) + ((cy / 32) * ((jpeg->width / 32) * 1024)))) - 128.0;
-			float Cr = *((uint8_t *)(chroma_buffer + (x / 32) * 1024 + ((x % 32) / 2 * 2 + 1) + ((cy % 32) * 32) + ((cy / 32) * ((jpeg->width / 32) * 1024)))) - 128.0;
+			float Y = *((uint8_t *)(luma_buffer + (x / 32) * 1024 + (x % 32) + ((y % 32) * 32) + ((y / 32) * (((jpeg->width + 31) / 32) * 1024))));
+			float Cb = *((uint8_t *)(chroma_buffer + (x / 32) * 1024 + ((x % 32) / 2 * 2) + ((cy % 32) * 32) + ((cy / 32) * (((jpeg->width + 31) / 32) * 1024)))) - 128.0;
+			float Cr = *((uint8_t *)(chroma_buffer + (x / 32) * 1024 + ((x % 32) / 2 * 2 + 1) + ((cy % 32) * 32) + ((cy / 32) * (((jpeg->width + 31) / 32) * 1024)))) - 128.0;
 
 			float R = Y + 1.402 * Cr;
 			float G = Y - 0.344136 * Cb - 0.714136 * Cr;
