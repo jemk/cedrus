@@ -40,6 +40,7 @@
 #define M_EOI   0xd9
 #define M_SOS   0xda
 #define M_DQT   0xdb
+#define M_DRI   0xdd
 #define M_DHT   0xc4
 #define M_DAC   0xcc
 
@@ -135,6 +136,10 @@ int parse_jpeg(struct jpeg_t *jpeg, const uint8_t *data, const int len)
 			}
 			break;
 
+		case M_DRI:
+			jpeg->restart_interval = ((uint16_t)data[pos + 2]) << 8 | (uint16_t)data[pos + 3];
+			break;
+
 		case M_SOS:
 			for (i = 0; i < data[pos + 2]; i++)
 			{
@@ -190,7 +195,7 @@ int parse_jpeg(struct jpeg_t *jpeg, const uint8_t *data, const int len)
 void dump_jpeg(const struct jpeg_t *jpeg)
 {
 	int i, j, k;
-	printf("Width: %u  Height: %u  Bits: %u\nComponents:\n", jpeg->width, jpeg->height, jpeg->bits);
+	printf("Width: %u  Height: %u  Bits: %u\nRestart interval: %u\nComponents:\n", jpeg->width, jpeg->height, jpeg->bits, jpeg->restart_interval);
 	for (i = 0; i < 3; i++)
 	{
 		if (jpeg->comp[i].samp_h && jpeg->comp[i].samp_v)

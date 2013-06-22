@@ -230,8 +230,8 @@ void decode_jpeg(struct jpeg_t *jpeg)
 	// activate MPEG engine
 	writel(ve_regs + 0x00, 0x00130000);
 
-	// ??
-	writel(ve_regs + 0x100 + 0xc0, 0);
+	// set restart interval
+	writel(ve_regs + 0x100 + 0xc0, jpeg->restart_interval);
 
 	// set JPEG format
 	set_format(jpeg, ve_regs);

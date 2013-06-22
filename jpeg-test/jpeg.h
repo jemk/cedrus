@@ -47,6 +47,7 @@ struct jpeg_t
 		uint8_t num[16];
 		uint8_t codes[256];
 	} *huffman[8];
+	uint16_t restart_interval;
 	uint8_t *data;
 	uint32_t data_len;
 };
