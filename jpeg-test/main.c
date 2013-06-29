@@ -39,6 +39,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include "jpeg.h"
+#include "../common/disp.h"
 
 // taken from kernel
 #define PAGE_OFFSET 0xc0000000
@@ -280,7 +281,7 @@ void decode_jpeg(struct jpeg_t *jpeg)
 	// stop MPEG engine
 	writel(ve_regs + 0x0, 0x00130007);
 
-	output_ppm(stdout, jpeg, output, output + (output_buf_size / 2));
+	//output_ppm(stdout, jpeg, output, output + (output_buf_size / 2));
 
 	ioctl(fd, IOCTL_DISABLE_VE, 0);
 	ioctl(fd, IOCTL_ENGINE_REL, 0);
@@ -288,6 +289,35 @@ void decode_jpeg(struct jpeg_t *jpeg)
 	munmap(ve_regs, 0x800);
 
 	close(fd);
+
+	if (!disp_open())
+	{
+		fprintf(stderr, "Can't open /dev/disp\n");
+		return;
+	}
+
+	int color;
+	switch ((jpeg->comp[0].samp_h << 4) | jpeg->comp[0].samp_v)
+	{
+	case 0x11:
+	case 0x21:
+		color = COLOR_YUV422;
+		break;
+	case 0x12:
+	case 0x22:
+	default:
+		color = COLOR_YUV420;
+		break;
+	}
+
+	disp_set_para(ve.reserved_mem + input_buf_size - PAGE_OFFSET + 0x40000000,
+			ve.reserved_mem + input_buf_size + output_buf_size / 2 - PAGE_OFFSET + 0x40000000,
+			color, jpeg->width, jpeg->height,
+			0, 0, 800, 600);
+
+	getchar();
+
+	disp_close();
 }
 
 int main(const int argc, const char **argv)
