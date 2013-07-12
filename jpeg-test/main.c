@@ -39,6 +39,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include "jpeg.h"
+#include "../common/io.h"
 #include "../common/disp.h"
 
 // taken from kernel
@@ -75,16 +76,6 @@ struct ve_info
 	int reserved_mem_size;
 	uint32_t registers;
 };
-
-void writeb(void *addr, uint8_t val)
-{
-	*((volatile uint8_t *)addr) = val;
-}
-
-void writel(void *addr, uint32_t val)
-{
-	*((volatile uint32_t *)addr) = val;
-}
 
 int align(const int val, const int align)
 {
