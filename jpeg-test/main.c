@@ -301,8 +301,8 @@ void decode_jpeg(struct jpeg_t *jpeg)
 		break;
 	}
 
-	disp_set_para(ve.reserved_mem + input_buf_size - PAGE_OFFSET + 0x40000000,
-			ve.reserved_mem + input_buf_size + output_buf_size / 2 - PAGE_OFFSET + 0x40000000,
+	disp_set_para(ve.reserved_mem + input_buf_size - PAGE_OFFSET,
+			ve.reserved_mem + input_buf_size + output_buf_size / 2 - PAGE_OFFSET,
 			color, jpeg->width, jpeg->height,
 			0, 0, 800, 600);
 

@@ -26,6 +26,8 @@
 #include "disp.h"
 #include "sunxi_disp_ioctl.h"
 
+#define DRAM_OFFSET (0x40000000)
+
 static int fd = -1;
 static int layer = -1;
 static int last_id = -1;
@@ -75,8 +77,8 @@ int disp_set_para(const uint32_t luma_buffer, const uint32_t chroma_buffer,
 	}
 	layer_info.fb.seq = DISP_SEQ_UVUV;
 	layer_info.fb.br_swap = 0;
-	layer_info.fb.addr[0] = luma_buffer;
-	layer_info.fb.addr[1] = chroma_buffer;
+	layer_info.fb.addr[0] = luma_buffer + DRAM_OFFSET;
+	layer_info.fb.addr[1] = chroma_buffer + DRAM_OFFSET;
 
 	layer_info.fb.cs_mode = DISP_BT601;
 	layer_info.fb.size.width = width;
@@ -112,8 +114,8 @@ int disp_new_frame(const uint32_t luma_buffer, const uint32_t chroma_buffer,
 	memset(&video, 0, sizeof(__disp_video_fb_t));
 	video.id = id;
 	video.frame_rate = frame_rate;
-	video.addr[0] = luma_buffer;
-	video.addr[1] = chroma_buffer;
+	video.addr[0] = luma_buffer + DRAM_OFFSET;
+	video.addr[1] = chroma_buffer + DRAM_OFFSET;
 
 	args[0] = 0;
 	args[1] = layer;
