@@ -35,52 +35,12 @@
 #include <unistd.h>
 #include <err.h>
 #include <fcntl.h>
-#include <stropts.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include "jpeg.h"
+#include "../common/ve.h"
 #include "../common/io.h"
 #include "../common/disp.h"
-
-// taken from kernel
-#define PAGE_OFFSET 0xc0000000
-#define DEVICE "/dev/cedar_dev"
-enum IOCTL_CMD
-{
-	IOCTL_UNKOWN = 0x100,
-	IOCTL_GET_ENV_INFO,
-	IOCTL_WAIT_VE,
-	IOCTL_RESET_VE,
-	IOCTL_ENABLE_VE,
-	IOCTL_DISABLE_VE,
-	IOCTL_SET_VE_FREQ,
-
-	IOCTL_CONFIG_AVS2 = 0x200,
-	IOCTL_GETVALUE_AVS2 ,
-	IOCTL_PAUSE_AVS2 ,
-	IOCTL_START_AVS2 ,
-	IOCTL_RESET_AVS2 ,
-	IOCTL_ADJUST_AVS2,
-	IOCTL_ENGINE_REQ,
-	IOCTL_ENGINE_REL,
-	IOCTL_ENGINE_CHECK_DELAY,
-	IOCTL_GET_IC_VER,
-
-	IOCTL_ADJUST_AVS2_ABS,
-	IOCTL_FLUSH_CACHE
-};
-
-struct ve_info
-{
-	uint32_t reserved_mem;
-	int reserved_mem_size;
-	uint32_t registers;
-};
-
-int align(const int val, const int align)
-{
-	return (val + align - 1) & ~(align - 1);
-}
 
 void set_quantization_tables(struct jpeg_t *jpeg, void *regs)
 {
@@ -195,29 +155,17 @@ void output_ppm(FILE *file, struct jpeg_t *jpeg, uint8_t *luma_buffer, uint8_t *
 
 void decode_jpeg(struct jpeg_t *jpeg)
 {
-	int fd;
-	struct ve_info ve;
-	void *ve_regs;
+	if (!ve_open())
+		err(EXIT_FAILURE, "Can't open VE");
 
-	if ((fd = open(DEVICE, O_RDWR)) == -1)
-		err(EXIT_FAILURE, "Can't open %s", DEVICE);
+	void *ve_regs = ve_get_regs();
 
-	if (ioctl(fd, IOCTL_GET_ENV_INFO, (void *)(&ve)) == -1)
-		err(EXIT_FAILURE, "Can't get env_info");
-
-	ve_regs = mmap(NULL, 0x800, PROT_READ | PROT_WRITE, MAP_SHARED, fd, ve.registers);
-
-	ioctl(fd, IOCTL_ENGINE_REQ, 0);
-	ioctl(fd, IOCTL_ENABLE_VE, 0);
-	ioctl(fd, IOCTL_SET_VE_FREQ, 160);
-	ioctl(fd, IOCTL_RESET_VE, 0);
-
-	int input_buf_size = align(jpeg->data_len, 64*1024);
-	int output_buf_size = align(jpeg->width, 1024) * align(jpeg->height, 1024) * 2;
-
-	uint8_t *input = mmap(NULL, input_buf_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, ve.reserved_mem);
-	uint8_t *output = mmap(NULL, output_buf_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, ve.reserved_mem + input_buf_size);
-	memcpy(input, jpeg->data, jpeg->data_len);
+	int input_size =(jpeg->data_len + 65535) & ~65535;
+	uint8_t *input_buffer = ve_malloc(input_size);
+	int output_size = ((jpeg->width + 31) & ~31) * ((jpeg->height + 31) & ~31);
+	uint8_t *luma_output = ve_malloc(output_size);
+	uint8_t *chroma_output = ve_malloc(output_size);
+	memcpy(input_buffer, jpeg->data, jpeg->data_len);
 
 	// activate MPEG engine
 	writel(ve_regs + 0x00, 0x00130000);
@@ -229,8 +177,8 @@ void decode_jpeg(struct jpeg_t *jpeg)
 	set_format(jpeg, ve_regs);
 
 	// set output buffers (Luma / Croma)
-	writel(ve_regs + 0x100 + 0xcc, ve.reserved_mem + input_buf_size - PAGE_OFFSET);
-	writel(ve_regs + 0x100 + 0xd0, ve.reserved_mem + input_buf_size + (output_buf_size / 2) - PAGE_OFFSET);
+	writel(ve_regs + 0x100 + 0xcc, ve_virt2phys(luma_output));
+	writel(ve_regs + 0x100 + 0xd0, ve_virt2phys(chroma_output));
 
 	// set size
 	set_size(jpeg, ve_regs);
@@ -239,7 +187,7 @@ void decode_jpeg(struct jpeg_t *jpeg)
 	writel(ve_regs + 0x100 + 0xd4, 0x00000000);
 
 	// input end
-	writel(ve_regs + 0x100 + 0x34, ve.reserved_mem + input_buf_size - 1 - PAGE_OFFSET);
+	writel(ve_regs + 0x100 + 0x34, ve_virt2phys(input_buffer) + input_size - 1);
 
 	// ??
 	writel(ve_regs + 0x100 + 0x14, 0x0000007c);
@@ -251,7 +199,7 @@ void decode_jpeg(struct jpeg_t *jpeg)
 	writel(ve_regs + 0x100 + 0x30, jpeg->data_len * 8);
 
 	// set input buffer
-	writel(ve_regs + 0x100 + 0x28, (ve.reserved_mem - PAGE_OFFSET) | 0x70000000);
+	writel(ve_regs + 0x100 + 0x28, ve_virt2phys(input_buffer) | 0x70000000);
 
 	// set Quantisation Table
 	set_quantization_tables(jpeg, ve_regs);
@@ -264,7 +212,7 @@ void decode_jpeg(struct jpeg_t *jpeg)
 	writeb(ve_regs + 0x100 + 0x18, 0x0e);
 
 	// wait for interrupt
-	ioctl(fd, IOCTL_WAIT_VE, 1);
+	ve_wait(1);
 
 	// clean interrupt flag (??)
 	writel(ve_regs + 0x100 + 0x1c, 0x0000c00f);
@@ -273,13 +221,6 @@ void decode_jpeg(struct jpeg_t *jpeg)
 	writel(ve_regs + 0x0, 0x00130007);
 
 	//output_ppm(stdout, jpeg, output, output + (output_buf_size / 2));
-
-	ioctl(fd, IOCTL_DISABLE_VE, 0);
-	ioctl(fd, IOCTL_ENGINE_REL, 0);
-
-	munmap(ve_regs, 0x800);
-
-	close(fd);
 
 	if (!disp_open())
 	{
@@ -301,14 +242,18 @@ void decode_jpeg(struct jpeg_t *jpeg)
 		break;
 	}
 
-	disp_set_para(ve.reserved_mem + input_buf_size - PAGE_OFFSET,
-			ve.reserved_mem + input_buf_size + output_buf_size / 2 - PAGE_OFFSET,
+	disp_set_para(ve_virt2phys(luma_output), ve_virt2phys(chroma_output),
 			color, jpeg->width, jpeg->height,
 			0, 0, 800, 600);
 
 	getchar();
 
 	disp_close();
+
+	ve_free(input_buffer);
+	ve_free(luma_output);
+	ve_free(chroma_output);
+	ve_close();
 }
 
 int main(const int argc, const char **argv)
