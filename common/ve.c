@@ -61,6 +61,12 @@ struct ve_info
 	uint32_t registers;
 };
 
+struct cedarv_cache_range
+{
+	long start;
+	long end;
+};
+
 static int fd = -1;
 static void *regs = NULL;
 
@@ -109,6 +115,17 @@ void ve_close(void)
 	munmap(regs, 0x800);
 
 	close(fd);
+}
+
+void ve_flush_cache(void *start, int len)
+{
+	struct cedarv_cache_range range =
+	{
+		.start = (int)start,
+		.end = (int)(start + len)
+	};
+
+	ioctl(fd, IOCTL_FLUSH_CACHE, (void*)(&range));
 }
 
 void *ve_get_regs(void)

@@ -157,6 +157,7 @@ void decode_mpeg(struct frame_buffers_t *frame_buffers, const struct mpeg_t * co
 	int input_size = (mpeg->len + 65535) & ~65535;
 	uint8_t *input_buffer = ve_malloc(input_size);
 	memcpy(input_buffer, mpeg->data, mpeg->len);
+	ve_flush_cache(input_buffer, mpeg->len);
 
 	void *ve_regs = ve_get_regs();
 

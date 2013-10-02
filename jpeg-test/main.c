@@ -166,6 +166,7 @@ void decode_jpeg(struct jpeg_t *jpeg)
 	uint8_t *luma_output = ve_malloc(output_size);
 	uint8_t *chroma_output = ve_malloc(output_size);
 	memcpy(input_buffer, jpeg->data, jpeg->data_len);
+	ve_flush_cache(input_buffer, jpeg->data_len);
 
 	// activate MPEG engine
 	writel(ve_regs + 0x00, 0x00130000);

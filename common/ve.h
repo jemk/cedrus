@@ -23,6 +23,7 @@
 
 int ve_open(void);
 void ve_close(void);
+void ve_flush_cache(void *start, int len);
 void *ve_get_regs(void);
 int ve_wait(int timeout);
 
