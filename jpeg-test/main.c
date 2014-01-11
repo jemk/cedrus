@@ -38,17 +38,16 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include "jpeg.h"
-#include "../common/ve.h"
-#include "../common/io.h"
-#include "../common/disp.h"
+#include "ve.h"
+#include "disp.h"
 
 void set_quantization_tables(struct jpeg_t *jpeg, void *regs)
 {
 	int i;
 	for (i = 0; i < 64; i++)
-		writel(regs + 0x100 + 0x80, (uint32_t)(64 + i) << 8 | jpeg->quant[0]->coeff[i]);
+		writel((uint32_t)(64 + i) << 8 | jpeg->quant[0]->coeff[i], regs + 0x100 + 0x80);
 	for (i = 0; i < 64; i++)
-		writel(regs + 0x100 + 0x80, (uint32_t)(i) << 8 | jpeg->quant[1]->coeff[i]);
+		writel((uint32_t)(i) << 8 | jpeg->quant[1]->coeff[i], regs + 0x100 + 0x80);
 }
 
 void set_huffman_tables(struct jpeg_t *jpeg, void *regs)
@@ -88,7 +87,7 @@ void set_huffman_tables(struct jpeg_t *jpeg, void *regs)
 
 	for (i = 0; i < 512; i++)
 	{
-		writel(regs + 0x100 + 0xe4, buffer[i]);
+		writel(buffer[i], regs + 0x100 + 0xe4);
 	}
 }
 
@@ -99,16 +98,16 @@ void set_format(struct jpeg_t *jpeg, void *regs)
 	switch (fmt)
 	{
 	case 0x11:
-		writeb(regs + 0x100 + 0x1b, 0x1b);
+		writeb(0x1b, regs + 0x100 + 0x1b);
 		break;
 	case 0x21:
-		writeb(regs + 0x100 + 0x1b, 0x13);
+		writeb(0x13, regs + 0x100 + 0x1b);
 		break;
 	case 0x12:
-		writeb(regs + 0x100 + 0x1b, 0x23);
+		writeb(0x23, regs + 0x100 + 0x1b);
 		break;
 	case 0x22:
-		writeb(regs + 0x100 + 0x1b, 0x03);
+		writeb(0x03, regs + 0x100 + 0x1b);
 		break;
 	}
 }
@@ -117,7 +116,7 @@ void set_size(struct jpeg_t *jpeg, void *regs)
 {
 	uint16_t h = (jpeg->height - 1) / (8 * jpeg->comp[0].samp_v);
 	uint16_t w = (jpeg->width - 1) / (8 * jpeg->comp[0].samp_h);
-	writel(regs + 0x100 + 0xb8, (uint32_t)h << 16 | w);
+	writel((uint32_t)h << 16 | w, regs + 0x100 + 0xb8);
 }
 
 void output_ppm(FILE *file, struct jpeg_t *jpeg, uint8_t *luma_buffer, uint8_t *chroma_buffer)
@@ -169,57 +168,57 @@ void decode_jpeg(struct jpeg_t *jpeg)
 	ve_flush_cache(input_buffer, jpeg->data_len);
 
 	// activate MPEG engine
-	writel(ve_regs + 0x00, 0x00130000);
+	writel(0x00130000, ve_regs + 0x00);
 
 	// set restart interval
-	writel(ve_regs + 0x100 + 0xc0, jpeg->restart_interval);
+	writel(jpeg->restart_interval, ve_regs + 0x100 + 0xc0);
 
 	// set JPEG format
 	set_format(jpeg, ve_regs);
 
 	// set output buffers (Luma / Croma)
-	writel(ve_regs + 0x100 + 0xcc, ve_virt2phys(luma_output));
-	writel(ve_regs + 0x100 + 0xd0, ve_virt2phys(chroma_output));
+	writel(ve_virt2phys(luma_output), ve_regs + 0x100 + 0xcc);
+	writel(ve_virt2phys(chroma_output), ve_regs + 0x100 + 0xd0);
 
 	// set size
 	set_size(jpeg, ve_regs);
 
 	// ??
-	writel(ve_regs + 0x100 + 0xd4, 0x00000000);
+	writel(0x00000000, ve_regs + 0x100 + 0xd4);
 
 	// input end
-	writel(ve_regs + 0x100 + 0x34, ve_virt2phys(input_buffer) + input_size - 1);
+	writel(ve_virt2phys(input_buffer) + input_size - 1, ve_regs + 0x100 + 0x34);
 
 	// ??
-	writel(ve_regs + 0x100 + 0x14, 0x0000007c);
+	writel(0x0000007c, ve_regs + 0x100 + 0x14);
 
 	// set input offset in bits
-	writel(ve_regs + 0x100 + 0x2c, 0 * 8);
+	writel(0 * 8, ve_regs + 0x100 + 0x2c);
 
 	// set input length in bits
-	writel(ve_regs + 0x100 + 0x30, jpeg->data_len * 8);
+	writel(jpeg->data_len * 8, ve_regs + 0x100 + 0x30);
 
 	// set input buffer
-	writel(ve_regs + 0x100 + 0x28, ve_virt2phys(input_buffer) | 0x70000000);
+	writel(ve_virt2phys(input_buffer) | 0x70000000, ve_regs + 0x100 + 0x28);
 
 	// set Quantisation Table
 	set_quantization_tables(jpeg, ve_regs);
 
 	// set Huffman Table
-	writel(ve_regs + 0x100 + 0xe0, 0x00000000);
+	writel(0x00000000, ve_regs + 0x100 + 0xe0);
 	set_huffman_tables(jpeg, ve_regs);
 
 	// start
-	writeb(ve_regs + 0x100 + 0x18, 0x0e);
+	writeb(0x0e, ve_regs + 0x100 + 0x18);
 
 	// wait for interrupt
 	ve_wait(1);
 
 	// clean interrupt flag (??)
-	writel(ve_regs + 0x100 + 0x1c, 0x0000c00f);
+	writel(0x0000c00f, ve_regs + 0x100 + 0x1c);
 
 	// stop MPEG engine
-	writel(ve_regs + 0x0, 0x00130007);
+	writel(0x00130007, ve_regs + 0x0);
 
 	//output_ppm(stdout, jpeg, output, output + (output_buf_size / 2));
 

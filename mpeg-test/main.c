@@ -32,9 +32,8 @@
 #include <err.h>
 #include <libavformat/avformat.h>
 #include "mpeg.h"
-#include "../common/ve.h"
-#include "../common/io.h"
-#include "../common/disp.h"
+#include "ve.h"
+#include "disp.h"
 
 static const uint8_t mpeg_default_intra_quant[64] =
 {
@@ -64,9 +63,9 @@ static void set_quantization_tables(void * const regs, const uint8_t * const tab
 {
 	int i;
 	for (i = 0; i < 64; i++)
-		writel(regs + 0x100 + 0x80, (uint32_t)(64 + i) << 8 | table1[i]);
+		writel((uint32_t)(64 + i) << 8 | table1[i], regs + 0x100 + 0x80);
 	for (i = 0; i < 64; i++)
-		writel(regs + 0x100 + 0x80, (uint32_t)(i) << 8 | table2[i]);
+		writel((uint32_t)(i) << 8 | table2[i], regs + 0x100 + 0x80);
 }
 
 struct frame_t
@@ -167,8 +166,8 @@ void decode_mpeg(struct frame_buffers_t *frame_buffers, const struct mpeg_t * co
 	// set size
 	uint16_t width = (mpeg->width + 15) / 16;
 	uint16_t height = (mpeg->height + 15) / 16;
-	writel(ve_regs + 0x100 + 0x08, (width << 8) | height);
-	writel(ve_regs + 0x100 + 0x0c, ((width * 16) << 16) | (height * 16));
+	writel((width << 8) | height, ve_regs + 0x100 + 0x08);
+	writel(((width * 16) << 16) | (height * 16), ve_regs + 0x100 + 0x0c);
 
 	// set picture header
 	uint32_t pic_header = 0x00000000;
@@ -187,19 +186,19 @@ void decode_mpeg(struct frame_buffers_t *frame_buffers, const struct mpeg_t * co
 	pic_header |= ((mpeg->alternate_scan & 0x1) << 2);
 	pic_header |= ((mpeg->full_pel_forward_vector & 0x1) << 1);
 	pic_header |= ((mpeg->full_pel_backward_vector & 0x1) << 0);
-	writel(ve_regs + 0x100 + 0x00, pic_header);
+	writel(pic_header, ve_regs + 0x100 + 0x00);
 
 	// ??
-	writel(ve_regs + 0x100 + 0x10, 0x00000000);
+	writel(0x00000000, ve_regs + 0x100 + 0x10);
 
 	// ??
-	writel(ve_regs + 0x100 + 0x14, 0x800001b8);
+	writel(0x800001b8, ve_regs + 0x100 + 0x14);
 
 	// ??
-	writel(ve_regs + 0x100 + 0xc4, 0x00000000);
+	writel(0x00000000, ve_regs + 0x100 + 0xc4);
 
 	// ??
-	writel(ve_regs + 0x100 + 0xc8, 0x00000000);
+	writel(0x00000000, ve_regs + 0x100 + 0xc8);
 
 	// set forward/backward predicion buffers
 	if (mpeg->picture_coding_type == PCT_I || mpeg->picture_coding_type == PCT_P)
@@ -209,37 +208,37 @@ void decode_mpeg(struct frame_buffers_t *frame_buffers, const struct mpeg_t * co
 		frame_unref(frame_buffers->backward);
 		frame_buffers->backward = frame_ref(frame_buffers->output);
 	}
-	writel(ve_regs + 0x100 + 0x50, ve_virt2phys(frame_buffers->forward->luma_buffer));
-	writel(ve_regs + 0x100 + 0x54, ve_virt2phys(frame_buffers->forward->chroma_buffer));
-	writel(ve_regs + 0x100 + 0x58, ve_virt2phys(frame_buffers->backward->luma_buffer));
-	writel(ve_regs + 0x100 + 0x5c, ve_virt2phys(frame_buffers->backward->chroma_buffer));
+	writel(ve_virt2phys(frame_buffers->forward->luma_buffer), ve_regs + 0x100 + 0x50);
+	writel(ve_virt2phys(frame_buffers->forward->chroma_buffer), ve_regs + 0x100 + 0x54);
+	writel(ve_virt2phys(frame_buffers->backward->luma_buffer), ve_regs + 0x100 + 0x58);
+	writel(ve_virt2phys(frame_buffers->backward->chroma_buffer), ve_regs + 0x100 + 0x5c);
 
 	// set output buffers (Luma / Croma)
-	writel(ve_regs + 0x100 + 0x48, ve_virt2phys(frame_buffers->output->luma_buffer));
-	writel(ve_regs + 0x100 + 0x4c, ve_virt2phys(frame_buffers->output->chroma_buffer));
-	writel(ve_regs + 0x100 + 0xcc, ve_virt2phys(frame_buffers->output->luma_buffer));
-	writel(ve_regs + 0x100 + 0xd0, ve_virt2phys(frame_buffers->output->chroma_buffer));
+	writel(ve_virt2phys(frame_buffers->output->luma_buffer), ve_regs + 0x100 + 0x48);
+	writel(ve_virt2phys(frame_buffers->output->chroma_buffer), ve_regs + 0x100 + 0x4c);
+	writel(ve_virt2phys(frame_buffers->output->luma_buffer), ve_regs + 0x100 + 0xcc);
+	writel(ve_virt2phys(frame_buffers->output->chroma_buffer), ve_regs + 0x100 + 0xd0);
 
 	// set input offset in bits
-	writel(ve_regs + 0x100 + 0x2c, (mpeg->pos - 4) * 8);
+	writel((mpeg->pos - 4) * 8, ve_regs + 0x100 + 0x2c);
 
 	// set input length in bits (+ little bit more, else it fails sometimes ??)
-	writel(ve_regs + 0x100 + 0x30, (mpeg->len - (mpeg->pos - 4) + 16) * 8);
+	writel((mpeg->len - (mpeg->pos - 4) + 16) * 8, ve_regs + 0x100 + 0x30);
 
 	// input end
-	writel(ve_regs + 0x100 + 0x34, ve_virt2phys(input_buffer) + input_size - 1);
+	writel(ve_virt2phys(input_buffer) + input_size - 1, ve_regs + 0x100 + 0x34);
 
 	// set input buffer
-	writel(ve_regs + 0x100 + 0x28, ve_virt2phys(input_buffer) | 0x50000000);
+	writel(ve_virt2phys(input_buffer) | 0x50000000, ve_regs + 0x100 + 0x28);
 
 	// trigger
-	writel(ve_regs + 0x100 + 0x18, (mpeg->type ? 0x02000000 : 0x01000000) | 0x8000000f);
+	writel((mpeg->type ? 0x02000000 : 0x01000000) | 0x8000000f, ve_regs + 0x100 + 0x18);
 
 	// wait for interrupt
 	ve_wait(1);
 
 	// clean interrupt flag (??)
-	writel(ve_regs + 0x100 + 0x1c, 0x0000c00f);
+	writel(0x0000c00f, ve_regs + 0x100 + 0x1c);
 
 	ve_free(input_buffer);
 }
@@ -314,7 +313,7 @@ int main(int argc, char** argv)
 	memset(frames, 0, sizeof(frames));
 
 	// activate MPEG engine
-	writel(ve_get_regs() + 0x00, 0x00130000);
+	writel(0x00130000, ve_get_regs() + 0x00);
 
 	printf("Playing now... press Enter for next frame!\n");
 
@@ -369,7 +368,7 @@ int main(int argc, char** argv)
 	}
 
 	// stop MPEG engine
-	writel(ve_get_regs() + 0x0, 0x00130007);
+	writel(0x00130007, ve_get_regs() + 0x0);
 
 	// show left over frames
 	while (disp_frame < gop_offset + gop_frames && frames[disp_frame % RING_BUFFER_SIZE] != NULL)

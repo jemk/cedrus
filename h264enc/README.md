@@ -24,12 +24,12 @@ Usage:
     ffmpeg -i <inputfile> -vf pad="trunc((iw+15)/16)*16" -pix_fmt nv12 \
        -f rawvideo pipe: | ./h264enc - <width> <height> <outputfile>
 
-It is *imortant* that the input data is in nv12 format and has a width multiple
+It is *important* that the input data is in nv12 format and has a width multiple
 of 16, this is ensured by the "-vf pad" above.
 
 For example:
 
     ffmpeg -i bigbuckbunny.mpg -vf pad="trunc((iw+15)/16)*16" -pix_fmt nv12 \
        -f rawvideo pipe: | ./h264enc - 854 480 bigbuckbunny.264
-    
+
     ffplay bigbuckbunny.264

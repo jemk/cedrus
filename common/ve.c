@@ -1,24 +1,24 @@
 /*
  * Copyright (c) 2013 Jens Kuske <jenskuske@gmail.com>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- * MA 02110-1301, USA.
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
 
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -69,6 +69,7 @@ struct cedarv_cache_range
 
 static int fd = -1;
 static void *regs = NULL;
+static int version = 0;
 
 struct memchunk_t
 {
@@ -82,6 +83,9 @@ static struct memchunk_t first_memchunk = { .phys_addr = 0x0, .size = 0, .virt_a
 
 int ve_open(void)
 {
+	if (fd != -1)
+		return 0;
+
 	struct ve_info ve;
 
 	fd = open(DEVICE, O_RDWR);
@@ -101,24 +105,36 @@ int ve_open(void)
 
 	ioctl(fd, IOCTL_ENGINE_REQ, 0);
 	ioctl(fd, IOCTL_ENABLE_VE, 0);
-	ioctl(fd, IOCTL_SET_VE_FREQ, 160);
+	ioctl(fd, IOCTL_SET_VE_FREQ, 320);
 	ioctl(fd, IOCTL_RESET_VE, 0);
+
+	writel(0x00130007, regs + VE_CTRL);
+
+	version = readl(regs + VE_VERSION) >> 16;
+	printf("[VDPAU SUNXI] VE version 0x%04x opened.\n", version);
 
 	return 1;
 }
 
 void ve_close(void)
 {
+	if (fd == -1)
+		return;
+
 	ioctl(fd, IOCTL_DISABLE_VE, 0);
 	ioctl(fd, IOCTL_ENGINE_REL, 0);
 
 	munmap(regs, 0x800);
 
 	close(fd);
+	fd = -1;
 }
 
 void ve_flush_cache(void *start, int len)
 {
+	if (fd == -1)
+		return;
+
 	struct cedarv_cache_range range =
 	{
 		.start = (int)start,
@@ -130,16 +146,30 @@ void ve_flush_cache(void *start, int len)
 
 void *ve_get_regs(void)
 {
+	if (fd == -1)
+		return NULL;
+
 	return regs;
+}
+
+int ve_get_version(void)
+{
+	return version;
 }
 
 int ve_wait(int timeout)
 {
+	if (fd == -1)
+		return 0;
+
 	return ioctl(fd, IOCTL_WAIT_VE, timeout);
 }
 
 void *ve_malloc(int size)
 {
+	if (fd == -1)
+		return NULL;
+
 	size = (size + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
 	struct memchunk_t *c, *best_chunk = NULL;
 	for (c = &first_memchunk; c != NULL; c = c->next)
@@ -175,6 +205,9 @@ void *ve_malloc(int size)
 
 void ve_free(void *ptr)
 {
+	if (fd == -1)
+		return;
+
 	if (ptr == NULL)
 		return;
 
@@ -200,6 +233,9 @@ void ve_free(void *ptr)
 
 uint32_t ve_virt2phys(void *ptr)
 {
+	if (fd == -1)
+		return 0;
+
 	struct memchunk_t *c;
 	for (c = &first_memchunk; c != NULL; c = c->next)
 	{
