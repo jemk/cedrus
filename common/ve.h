@@ -68,9 +68,13 @@ static inline uint32_t readl(void *addr)
 #define VE_MPEG_BACK_LUMA		0x158
 #define VE_MPEG_BACK_CHROMA		0x15c
 #define VE_MPEG_IQ_MIN_INPUT		0x180
+#define VE_MPEG_JPEG_SIZE		0x1b8
+#define VE_MPEG_JPEG_RES_INT		0x1c0
 #define VE_MPEG_ROT_LUMA		0x1cc
 #define VE_MPEG_ROT_CHROMA		0x1d0
 #define VE_MPEG_SDROT_CTRL		0x1d4
+#define VE_MPEG_RAM_WRITE_PTR		0x1e0
+#define VE_MPEG_RAM_WRITE_DATA		0x1e4
 
 #define VE_H264_FRAME_SIZE		0x200
 #define VE_H264_PIC_HDR			0x204
