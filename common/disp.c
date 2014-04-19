@@ -105,6 +105,44 @@ int disp_set_para(const uint32_t luma_buffer, const uint32_t chroma_buffer,
 	return 1;
 }
 
+
+void disp_show_rgb(const uint32_t red, const uint32_t green, const uint32_t blue, const int width, const int height)
+{
+	uint32_t args[4];
+	__disp_layer_info_t layer_info;
+	memset(&layer_info, 0, sizeof(layer_info));
+	layer_info.pipe = 1;
+	layer_info.mode = DISP_LAYER_WORK_MODE_SCALER;
+	layer_info.fb.mode = DISP_MOD_NON_MB_PLANAR;
+	layer_info.fb.format = DISP_FORMAT_RGB888;
+	layer_info.fb.seq = DISP_SEQ_P3210;
+	layer_info.fb.br_swap = 0;
+	layer_info.fb.addr[0] = red + DRAM_OFFSET;
+	layer_info.fb.addr[1] = green + DRAM_OFFSET;
+	layer_info.fb.addr[2] = blue + DRAM_OFFSET;
+
+	layer_info.fb.cs_mode = DISP_BT601;
+	layer_info.fb.size.width = width;
+	layer_info.fb.size.height = height;
+	layer_info.src_win.x = 0;
+	layer_info.src_win.y = 0;
+	layer_info.src_win.width = width;
+	layer_info.src_win.height = height;
+	layer_info.scn_win.x = 0;
+	layer_info.scn_win.y = 0;
+	layer_info.scn_win.width = width;
+	layer_info.scn_win.height = height;
+
+	args[0] = 0;
+	args[1] = layer;
+	args[2] = (unsigned long)(&layer_info);
+	args[3] = 0;
+	ioctl(fd, DISP_CMD_LAYER_SET_PARA, args);
+	ioctl(fd, DISP_CMD_LAYER_TOP, args);
+
+	ioctl(fd, DISP_CMD_LAYER_OPEN, args);
+}
+
 int disp_new_frame(const uint32_t luma_buffer, const uint32_t chroma_buffer,
 			const int id, const int frame_rate)
 {

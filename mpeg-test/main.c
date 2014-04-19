@@ -315,6 +315,20 @@ int main(int argc, char** argv)
 	// activate MPEG engine
 	writel(0x00130000, ve_get_regs() + VE_CTRL);
 
+	// ANAGLYPH buffers for 1024x768 pictures (fix that)
+	uint32_t *red = ve_malloc(1024*768);
+	uint32_t *green = ve_malloc(1024*768);
+	uint32_t *blue = ve_malloc(1024*768);
+
+	writel(ve_virt2phys(red), ve_get_regs() + 0xd0);
+	writel(ve_virt2phys(green), ve_get_regs() + 0xd4);
+	writel(ve_virt2phys(blue), ve_get_regs() + 0xd8);
+
+	disp_open();
+
+	// set your control register here
+	writel(0x80000132, ve_get_regs() + 0x28);
+
 	printf("Playing now... press Enter for next frame!\n");
 
 	while (av_read_frame(avfmt_ctx, &pkt) >= 0)
@@ -334,6 +348,8 @@ int main(int argc, char** argv)
 
 			// decode frame
 			decode_mpeg(&frame_buffers, &mpeg);
+
+			disp_show_rgb(ve_virt2phys(red), ve_virt2phys(green), ve_virt2phys(blue), mpeg.width, mpeg.height);
 
 			// simple frame reordering (not safe, only for testing)
 			// count frames
@@ -356,7 +372,7 @@ int main(int argc, char** argv)
 			// if we decoded a displayable frame, show it
 			if (frames[disp_frame % RING_BUFFER_SIZE] != NULL)
 			{
-				frame_show(frames[disp_frame % RING_BUFFER_SIZE]);
+				//frame_show(frames[disp_frame % RING_BUFFER_SIZE]);
 				frame_unref(frames[(disp_frame - 2) % RING_BUFFER_SIZE]);
 				frames[(disp_frame - 2) % RING_BUFFER_SIZE] = NULL;
 				disp_frame++;
@@ -373,7 +389,7 @@ int main(int argc, char** argv)
 	// show left over frames
 	while (disp_frame < gop_offset + gop_frames && frames[disp_frame % RING_BUFFER_SIZE] != NULL)
 	{
-		frame_show(frames[disp_frame % RING_BUFFER_SIZE]);
+		//frame_show(frames[disp_frame % RING_BUFFER_SIZE]);
 		frame_unref(frames[(disp_frame - 2) % RING_BUFFER_SIZE]);
 		frames[(disp_frame - 2) % RING_BUFFER_SIZE] = NULL;
 		disp_frame++;

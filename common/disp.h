@@ -30,6 +30,7 @@ int disp_open(void);
 int disp_set_para(const uint32_t luma_buffer, const uint32_t chroma_buffer,
 			const int color_format, const int width, const int height,
 			const int out_x, const int out_y, const int put_width, const int out_height);
+void disp_show_rgb(const uint32_t red, const uint32_t green, const uint32_t blue, const int width, const int height);
 int disp_new_frame(const uint32_t luma_buffer, const uint32_t chroma_buffer,
 			const int id, const int frame_rate);
 void disp_close(void);
