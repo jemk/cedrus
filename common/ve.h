@@ -24,14 +24,15 @@
 
 int ve_open(void);
 void ve_close(void);
-void ve_flush_cache(void *start, int len);
-void *ve_get_regs(void);
 int ve_get_version(void);
 int ve_wait(int timeout);
+void *ve_get(int engine, uint32_t flags);
+void ve_put(void);
 
 void *ve_malloc(int size);
 void ve_free(void *ptr);
 uint32_t ve_virt2phys(void *ptr);
+void ve_flush_cache(void *start, int len);
 
 static inline void writeb(uint8_t val, void *addr)
 {
@@ -48,19 +49,30 @@ static inline uint32_t readl(void *addr)
 	return *((volatile uint32_t *) addr);
 }
 
+#define VE_ENGINE_MPEG			0x0
+#define VE_ENGINE_H264			0x1
+#define VE_ENGINE_AVC			0xb
+
 #define VE_CTRL				0x000
 #define VE_VERSION			0x0f0
 
 #define VE_MPEG_PIC_HDR			0x100
+#define VE_MPEG_VOP_HDR			0x104
 #define VE_MPEG_SIZE			0x108
 #define VE_MPEG_FRAME_SIZE		0x10c
+#define VE_MPEG_MBA			0x110
 #define VE_MPEG_CTRL			0x114
 #define VE_MPEG_TRIGGER			0x118
 #define VE_MPEG_STATUS			0x11c
+#define VE_MPEG_TRBTRD_FIELD		0x120
+#define VE_MPEG_TRBTRD_FRAME		0x124
 #define VE_MPEG_VLD_ADDR		0x128
 #define VE_MPEG_VLD_OFFSET		0x12c
 #define VE_MPEG_VLD_LEN			0x130
 #define VE_MPEG_VLD_END			0x134
+#define VE_MPEG_MBH_ADDR		0x138
+#define VE_MPEG_DCAC_ADDR		0x13c
+#define VE_MPEG_NCF_ADDR		0x144
 #define VE_MPEG_REC_LUMA		0x148
 #define VE_MPEG_REC_CHROMA		0x14c
 #define VE_MPEG_FWD_LUMA		0x150
@@ -68,6 +80,7 @@ static inline uint32_t readl(void *addr)
 #define VE_MPEG_BACK_LUMA		0x158
 #define VE_MPEG_BACK_CHROMA		0x15c
 #define VE_MPEG_IQ_MIN_INPUT		0x180
+#define VE_MPEG_QP_INPUT		0x184
 #define VE_MPEG_JPEG_SIZE		0x1b8
 #define VE_MPEG_JPEG_RES_INT		0x1c0
 #define VE_MPEG_ROT_LUMA		0x1cc

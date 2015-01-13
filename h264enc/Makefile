@@ -1,7 +1,7 @@
 TARGET = h264enc
 SRC = main.c ../common/ve.c
 CFLAGS = -Wall -O3 -I../common
-LDFLAGS =
+LDFLAGS = -lpthread
 LIBS =
 CC = gcc
 

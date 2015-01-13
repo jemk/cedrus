@@ -158,7 +158,8 @@ void decode_mpeg(struct frame_buffers_t *frame_buffers, const struct mpeg_t * co
 	memcpy(input_buffer, mpeg->data, mpeg->len);
 	ve_flush_cache(input_buffer, mpeg->len);
 
-	void *ve_regs = ve_get_regs();
+	// activate MPEG engine
+	void *ve_regs = ve_get(VE_ENGINE_MPEG, 0);
 
 	// set quantisation tables
 	set_quantization_tables(ve_regs, mpeg_default_intra_quant, mpeg_default_non_intra_quant);
@@ -240,6 +241,9 @@ void decode_mpeg(struct frame_buffers_t *frame_buffers, const struct mpeg_t * co
 	// clean interrupt flag (??)
 	writel(0x0000c00f, ve_regs + VE_MPEG_STATUS);
 
+	// stop MPEG engine
+	ve_put();
+
 	ve_free(input_buffer);
 }
 
@@ -312,9 +316,6 @@ int main(int argc, char** argv)
 	struct frame_t *frames[RING_BUFFER_SIZE];
 	memset(frames, 0, sizeof(frames));
 
-	// activate MPEG engine
-	writel(0x00130000, ve_get_regs() + VE_CTRL);
-
 	printf("Playing now... press Enter for next frame!\n");
 
 	while (av_read_frame(avfmt_ctx, &pkt) >= 0)
@@ -366,9 +367,6 @@ int main(int argc, char** argv)
 		}
 		av_free_packet(&pkt);
 	}
-
-	// stop MPEG engine
-	writel(0x00130007, ve_get_regs() + VE_CTRL);
 
 	// show left over frames
 	while (disp_frame < gop_offset + gop_frames && frames[disp_frame % RING_BUFFER_SIZE] != NULL)

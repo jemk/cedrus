@@ -200,8 +200,6 @@ int main(const int argc, const char **argv)
 		return EXIT_FAILURE;
 	}
 
-	void *ve_regs = ve_get_regs();
-
 	int output_size = 1 * 1024 * 1024;
 	void* output_buf = ve_malloc(output_size);
 
@@ -220,7 +218,7 @@ int main(const int argc, const char **argv)
 	void* mb_info_buf = ve_malloc(0x1000);
 
 	// activate AVC engine
-	writel(0x0013000b, ve_regs + VE_CTRL);
+	void *ve_regs = ve_get(VE_ENGINE_AVC, 0);
 
 	int frame_num = 0;
 	while (read_frame(in, input_buf, plane_size + plane_size / 2))
@@ -287,7 +285,7 @@ int main(const int argc, const char **argv)
 		frame_num++;
 	}
 
-	writel(0x00130007, ve_regs + VE_CTRL);
+	ve_put();
 
 	ve_free(input_buf);
 	ve_free(output_buf);

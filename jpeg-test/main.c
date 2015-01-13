@@ -157,8 +157,6 @@ void decode_jpeg(struct jpeg_t *jpeg)
 	if (!ve_open())
 		err(EXIT_FAILURE, "Can't open VE");
 
-	void *ve_regs = ve_get_regs();
-
 	int input_size =(jpeg->data_len + 65535) & ~65535;
 	uint8_t *input_buffer = ve_malloc(input_size);
 	int output_size = ((jpeg->width + 31) & ~31) * ((jpeg->height + 31) & ~31);
@@ -168,7 +166,7 @@ void decode_jpeg(struct jpeg_t *jpeg)
 	ve_flush_cache(input_buffer, jpeg->data_len);
 
 	// activate MPEG engine
-	writel(0x00130000, ve_regs + VE_CTRL);
+	void *ve_regs = ve_get(VE_ENGINE_MPEG, 0);
 
 	// set restart interval
 	writel(jpeg->restart_interval, ve_regs + VE_MPEG_JPEG_RES_INT);
@@ -218,7 +216,7 @@ void decode_jpeg(struct jpeg_t *jpeg)
 	writel(0x0000c00f, ve_regs + VE_MPEG_STATUS);
 
 	// stop MPEG engine
-	writel(0x00130007, ve_regs + VE_CTRL);
+	ve_put();
 
 	//output_ppm(stdout, jpeg, output, output + (output_buf_size / 2));
 
