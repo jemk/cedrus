@@ -1,35 +1,38 @@
 Proof of Concept hardware accelerated H264 encoder for sunxi
 ============================================================
 
-This is a first demo of the hardware encoding capabilities of sunxi SoCs.
+This is a basic example for using the H264 hardware encoder for sunxi SoCs.
 
-*It is just a proof of concept and not intended for production use!*
+*It is just a proof of concept and not recommended for production use!*
 
 Limitations:
 ------------
 
-- only I Frames
-- fixed QP (=30)
-- only raw input and bytestream output
+- no B frames
+- constant QP
+- only raw nv12 input and bytestream output
 - ... many more
 
-mplayer doesn't like the output, maybe there is still some error.
-Please use ffplay to test.
+The old mplayer doesn't seem to like the raw bytestream output, maybe our
+bytestream is still a little bit erroneous.
+
 
 Usage:
 ------
 
     make
 
-    ffmpeg -i <inputfile> -vf pad="trunc((iw+15)/16)*16" -pix_fmt nv12 \
+    ffmpeg -i <inputfile> -pix_fmt nv12 \
+       -vf pad="width=trunc((iw+15)/16)*16:height=trunc((ih+15)/16)*16" \
        -f rawvideo pipe: | ./h264enc - <width> <height> <outputfile>
 
-It is *important* that the input data is in nv12 format and has a width multiple
-of 16, this is ensured by the "-vf pad" above.
+It is *important* that the input data is in nv12 format and has a width and
+height multiple of 16, this is ensured by the "-vf pad" above.
 
 For example:
 
-    ffmpeg -i bigbuckbunny.mpg -vf pad="trunc((iw+15)/16)*16" -pix_fmt nv12 \
+    ffmpeg -i bigbuckbunny.mpg -pix_fmt nv12 \
+       -vf pad="width=trunc((iw+15)/16)*16:height=trunc((ih+15)/16)*16" \
        -f rawvideo pipe: | ./h264enc - 854 480 bigbuckbunny.264
 
     ffplay bigbuckbunny.264
