@@ -36,6 +36,7 @@ struct h264enc_internal {
 
 	uint8_t *luma_buffer, *chroma_buffer;
 	unsigned int input_buffer_size;
+	enum color_format input_color_format;
 
 	uint8_t *bytestream_buffer;
 	unsigned int bytestream_buffer_size;
@@ -246,6 +247,12 @@ h264enc *h264enc_new(const struct h264enc_params *p)
 		return NULL;
 	}
 
+	if (p->src_format != H264_FMT_NV12 && p->src_format != H264_FMT_NV16)
+	{
+		MSG("invalid color format");
+		return NULL;
+	}
+
 	/* allocate memory for h264enc structure */
 	c = calloc(1, sizeof(*c));
 	if (c == NULL)
@@ -273,7 +280,17 @@ h264enc *h264enc_new(const struct h264enc_params *p)
 	c->current_frame_num = 0;
 
 	/* allocate input buffer */
-	c->input_buffer_size = p->src_width * (p->src_height + p->src_height / 2);
+	c->input_color_format = p->src_format;
+	switch (c->input_color_format)
+	{
+	case H264_FMT_NV12:
+		c->input_buffer_size = p->src_width * (p->src_height + p->src_height / 2);
+		break;
+	case H264_FMT_NV16:
+		c->input_buffer_size = p->src_width * p->src_height * 2;
+		break;
+	}
+
 	c->luma_buffer = ve_malloc(c->input_buffer_size);
 	if (c->luma_buffer == NULL)
 		goto nomem;
@@ -355,6 +372,9 @@ int h264enc_encode_picture(h264enc *c)
 	/* set input size */
 	writel(c->mb_stride << 16, c->regs + VE_ISP_INPUT_STRIDE);
 	writel((c->mb_width << 16) | (c->mb_height << 0), c->regs + VE_ISP_INPUT_SIZE);
+
+	/* set input format */
+	writel(c->input_color_format << 29, c->regs + VE_ISP_CTRL);
 
 	/* set input buffer */
 	writel(ve_virt2phys(c->luma_buffer), c->regs + VE_ISP_INPUT_LUMA);

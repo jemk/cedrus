@@ -77,6 +77,7 @@ int main(const int argc, const char **argv)
 	params.width = width;
 	params.src_height = (height + 15) & ~15;
 	params.height = height;
+	params.src_format = H264_FMT_NV12;
 	params.profile_idc = 77;
 	params.level_idc = 41;
 	params.entropy_coding_mode = H264_EC_CABAC;

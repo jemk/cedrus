@@ -27,6 +27,7 @@ struct h264enc_params {
 
 	unsigned int src_width;
 	unsigned int src_height;
+	enum color_format { H264_FMT_NV12 = 0, H264_FMT_NV16 = 1 } src_format;
 
 	unsigned int profile_idc, level_idc;
 

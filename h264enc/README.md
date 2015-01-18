@@ -10,7 +10,7 @@ Limitations:
 
 - no B frames
 - constant QP
-- only raw nv12 input and bytestream output
+- only raw nv12 or nv16 input and bytestream output
 - ... many more
 
 The old mplayer doesn't seem to like the raw bytestream output, maybe our

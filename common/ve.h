@@ -119,6 +119,7 @@ static inline uint32_t readl(void *addr)
 
 #define VE_ISP_INPUT_SIZE		0xa00
 #define VE_ISP_INPUT_STRIDE		0xa04
+#define VE_ISP_CTRL			0xa08
 #define VE_ISP_INPUT_LUMA		0xa78
 #define VE_ISP_INPUT_CHROMA		0xa7c
 
