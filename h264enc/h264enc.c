@@ -47,7 +47,7 @@ struct h264enc_internal {
 		void *extra_buffer; /* unknown purpose, looks like smaller luma */
 	} ref_picture[2];
 
-	void *extra_buffer_line, *extra_buffer_frame; /* unknown purpose */
+	void *extra_buffer_line, *extra_buffer_frame, *extra_motion_est; /* unknown purpose */
 
 	void *regs;
 
@@ -57,6 +57,7 @@ struct h264enc_internal {
 
 	unsigned int entropy_coding_mode_flag;
 	unsigned int pic_init_qp;
+	unsigned int avc_motion_est;
 
 	unsigned int keyframe_interval;
 
@@ -217,6 +218,7 @@ void h264enc_free(h264enc *c)
 
 	ve_free(c->extra_buffer_line);
 	ve_free(c->extra_buffer_frame);
+	ve_free(c->extra_motion_est);
 	for (i = 0; i < 2; i++)
 	{
 		ve_free(c->ref_picture[i].luma_buffer);
@@ -318,6 +320,16 @@ h264enc *h264enc_new(const struct h264enc_params *p)
 	/* allocate unknown purpose buffers */
 	c->extra_buffer_frame = ve_malloc(ALIGN(c->mb_width, 4) * c->mb_height * 8);
 	c->extra_buffer_line = ve_malloc(c->mb_width * 32);
+
+
+	c->avc_motion_est = 0x00000104;
+	if (ve_get_version() == 0x1625){
+	c->avc_motion_est |= 1 << 18;
+	c->extra_motion_est = ve_malloc(c->mb_width * 24); 
+	if (c->extra_motion_est == NULL)
+		goto nomem;
+	}
+
 	if (c->extra_buffer_frame == NULL || c->extra_buffer_line == NULL)
 		goto nomem;
 
@@ -398,6 +410,8 @@ int h264enc_encode_picture(h264enc *c)
 	/* set unknown purpose buffers */
 	writel(ve_virt2phys(c->extra_buffer_line), c->regs + VE_AVC_MB_INFO);
 	writel(ve_virt2phys(c->extra_buffer_frame), c->regs + VE_AVC_UNK_BUF);
+	if (ve_get_version() == 0x1625)
+		writel(ve_virt2phys(c->extra_motion_est), c->regs + 0xbc4);
 
 	/* enable interrupt and clear status flags */
 	writel(readl(c->regs + VE_AVC_CTRL) | 0xf, c->regs + VE_AVC_CTRL);
@@ -411,7 +425,7 @@ int h264enc_encode_picture(h264enc *c)
 		params |= 0x10;
 	writel(params, c->regs + VE_AVC_PARAM);
 	writel((4 << 16) | (c->pic_init_qp << 8) | c->pic_init_qp, c->regs + VE_AVC_QP);
-	writel(0x00000104, c->regs + VE_AVC_MOTION_EST);
+	writel(c->avc_motion_est , c->regs + VE_AVC_MOTION_EST);
 
 	/* trigger encoding */
 	writel(0x8, c->regs + VE_AVC_TRIGGER);
